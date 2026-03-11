@@ -1,0 +1,223 @@
+Reads Soil Moisture sensor
+
+Reads Photoresistor (LDR)
+
+Reads Ultrasonic sensor
+
+MASTER
+
+// MASTER ARDUINO
+
+const int soilPin = A0;
+const int ldrPin  = A1;
+
+const int trigPin = 7;
+const int echoPin = 6;
+
+long readDistance() {
+
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2;
+
+  return distance;
+}
+
+void setup() {
+
+  Serial.begin(9600);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+}
+
+void loop() {
+
+  int soilValue = analogRead(soilPin);
+  int ldrValue  = analogRead(ldrPin);
+  long distance = readDistance();
+
+  Serial.print(soilValue);
+  Serial.print(",");
+  Serial.print(ldrValue);
+  Serial.print(",");
+  Serial.println(distance);
+
+  delay(1000);
+
+}
+
+==============================================================================================================================
+
+SLAVE
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27,16,2);
+
+int buzzer = 8;
+int led = 9;
+
+String data;
+
+void setup() {
+
+  Serial.begin(9600);
+
+  pinMode(buzzer, OUTPUT);
+  pinMode(led, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0,0);
+  lcd.print("Slave Ready");
+
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+
+  if (Serial.available()) {
+
+    data = Serial.readStringUntil('\n');
+
+    int comma1 = data.indexOf(',');
+    int comma2 = data.indexOf(',', comma1 + 1);
+
+    int soil = data.substring(0, comma1).toInt();
+    int ldr = data.substring(comma1 + 1, comma2).toInt();
+    int distance = data.substring(comma2 + 1).toInt();
+
+    lcd.clear();
+
+    lcd.setCursor(0,0);
+    lcd.print("S:");
+    lcd.print(soil);
+    lcd.print(" L:");
+    lcd.print(ldr);
+
+    lcd.setCursor(0,1);
+    lcd.print("D:");
+    lcd.print(distance);
+    lcd.print("cm");
+
+    // LED condition (Dark)
+    if(ldr < 400)
+      digitalWrite(led,HIGH);
+    else
+      digitalWrite(led,LOW);
+
+    // Buzzer condition
+    if(soil > 700 || distance < 10)
+      digitalWrite(buzzer,HIGH);
+    else
+      digitalWrite(buzzer,LOW);
+
+  }
+
+}
+
+
+========================================================
+========================================================
+
+lcd.clear();
+lcd.setCursor(0, 0);
+lcd.print("S:");
+lcd.print(soilValue);
+lcd.print(" L:");
+lcd.print(ldrValue);
+
+lcd.setCursor(0, 1);
+
+if (soilValue > 700) {
+  lcd.print("Soil Dry!");
+}
+else if (distance < 10) {
+  lcd.print("Object Close!");
+}
+else if (ldrValue < 400) {
+  lcd.print("Dark Room");
+}
+else {
+  lcd.print("System Normal");
+}
+
+
+========================================================
+========================================================
+2LDRS
+
+MASTER
+void setup() {
+  Serial.begin(9600);
+}
+
+void loop() {
+  int ldr1 = analogRead(A0);
+  int ldr2 = analogRead(A1);
+
+  // Send to slave
+  Serial.print(ldr1);
+  Serial.print(",");
+  Serial.println(ldr2);
+
+  delay(200);
+}
+
+
+SLAVE
+
+#include <Servo.h>
+
+Servo myServo;
+
+int servoPin = 9;
+int buzzerPin = 8;
+
+void setup() {
+  Serial.begin(9600);
+
+  myServo.attach(servoPin);
+  myServo.write(90);
+
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    int ldr1 = Serial.parseInt();
+    int ldr2 = Serial.parseInt();
+
+    if (ldr1 > 500 && ldr2 > 500) {
+      digitalWrite(buzzerPin, HIGH);
+      myServo.write(90);
+    }
+    else {
+      digitalWrite(buzzerPin, LOW);
+
+      if (ldr1 > 500) {
+        myServo.write(0);     // left
+      }
+      else if (ldr2 > 500) {
+        myServo.write(180);   // right
+      }
+      else {
+        myServo.write(90);    // center
+      }
+    }
+  }
+}
+
+

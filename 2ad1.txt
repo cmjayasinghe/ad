@@ -1,0 +1,140 @@
+Master
+
+// MASTER ARDUINO
+// Reads soil moisture, LDR, ultrasonic sensor
+// Sends data to slave through Serial
+
+const int soilPin = A0;
+const int ldrPin  = A1;
+
+const int trigPin = 7;
+const int echoPin = 6;
+
+long readDistanceCM() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2;
+
+  return distance;
+}
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+}
+
+void loop() {
+  int soilValue = analogRead(soilPin);
+  int ldrValue  = analogRead(ldrPin);
+  long distance = readDistanceCM();
+
+  // Send as CSV format: soil,ldr,distance
+  Serial.print(soilValue);
+  Serial.print(",");
+  Serial.print(ldrValue);
+  Serial.print(",");
+  Serial.println(distance);
+
+  delay(1000);
+}
+
+=========================================================================================================
+
+Slave
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// LCD address 0x27, 16 columns, 2 rows
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int buzzerPin = 8;
+const int ledPin = 9;
+
+String incomingData = "";
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  digitalWrite(buzzerPin, LOW);
+  digitalWrite(ledPin, LOW);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Slave Ready");
+  lcd.setCursor(0, 1);
+  lcd.print("Waiting Data");
+  delay(1500);
+  lcd.clear();
+}
+
+void loop() {
+  if (Serial.available()) {
+    incomingData = Serial.readStringUntil('\n');
+    incomingData.trim();
+
+    int firstComma = incomingData.indexOf(',');
+    int secondComma = incomingData.indexOf(',', firstComma + 1);
+
+    if (firstComma > 0 && secondComma > 0) {
+      int soilValue = incomingData.substring(0, firstComma).toInt();
+      int ldrValue = incomingData.substring(firstComma + 1, secondComma).toInt();
+      int distance = incomingData.substring(secondComma + 1).toInt();
+
+      // Show values on LCD
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("S:");
+      lcd.print(soilValue);
+      lcd.print(" L:");
+      lcd.print(ldrValue);
+
+      lcd.setCursor(0, 1);
+      lcd.print("D:");
+      lcd.print(distance);
+      lcd.print("cm");
+
+      // Conditions
+      // Soil dry -> buzzer ON
+      // Object close -> buzzer ON
+      // Low light -> LED ON
+
+      bool buzzerState = false;
+      bool ledState = false;
+
+      // Example thresholds
+      if (soilValue > 700) {
+        buzzerState = true;   // dry soil
+      }
+
+      if (distance < 10) {
+        buzzerState = true;   // object too close
+      }
+
+      if (ldrValue < 400) {
+        ledState = true;      // dark condition
+      }
+
+      digitalWrite(buzzerPin, buzzerState ? HIGH : LOW);
+      digitalWrite(ledPin, ledState ? HIGH : LOW);
+    }
+  }
+}
+
+===================================================================================================================
+
+
+

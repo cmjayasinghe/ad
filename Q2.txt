@@ -1,0 +1,140 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Button pins
+int startButton = 2;
+int feedButton  = 3;
+int playButton  = 4;
+
+// Output pins
+int buzzerPin = 5;
+int redPin    = 6;
+int greenPin  = 7;
+int bluePin   = 8;
+
+// Pet data
+int health = 70;
+int happiness = 50;
+String emotion = "Okay";
+bool gameStarted = false;
+
+// Timing
+unsigned long lastHealthDecrease = 0;
+
+void setColor(bool red, bool green, bool blue) {
+  digitalWrite(redPin, red);
+  digitalWrite(greenPin, green);
+  digitalWrite(bluePin, blue);
+}
+
+void updateEmotion() {
+  if (health <= 30) {
+    emotion = "Sad";
+  } else if (health > 70 && happiness > 50) {
+    emotion = "Happy";
+  } else {
+    emotion = "Okay";
+  }
+}
+
+void updateRGB() {
+  if (emotion == "Happy") {
+    setColor(LOW, HIGH, LOW);     // Green
+  } else if (emotion == "Okay") {
+    setColor(HIGH, HIGH, LOW);    // Yellow
+  } else {
+    setColor(HIGH, LOW, LOW);     // Red
+  }
+}
+
+void updateLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("H:");
+  lcd.print(health);
+  lcd.print("% P:");
+  lcd.print(happiness);
+  lcd.print("%");
+
+  lcd.setCursor(0, 1);
+
+  if (emotion == "Sad") {
+    lcd.print("Pet Sad Feed Me");
+  } else if (emotion == "Happy") {
+    lcd.print("Pet is Happy!");
+  } else {
+    lcd.print("Pet is Okay");
+  }
+}
+
+void setup() {
+  pinMode(startButton, INPUT_PULLUP);
+  pinMode(feedButton, INPUT_PULLUP);
+  pinMode(playButton, INPUT_PULLUP);
+
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Virtual Pet");
+  lcd.setCursor(0, 1);
+  lcd.print("Press Start");
+}
+
+void loop() {
+  // Start the game
+  if (!gameStarted && digitalRead(startButton) == LOW) {
+    gameStarted = true;
+    health = 70;
+    happiness = 50;
+    emotion = "Okay";
+    updateRGB();
+    updateLCD();
+    delay(300);
+  }
+
+  if (gameStarted) {
+    // Health decreases over time
+    if (millis() - lastHealthDecrease >= 3000) {
+      health--;
+      if (health < 0) health = 0;
+      lastHealthDecrease = millis();
+    }
+
+    // Feed button
+    if (digitalRead(feedButton) == LOW) {
+      health += 20;
+      if (health > 100) health = 100;
+      delay(300);
+    }
+
+    // Play button
+    if (digitalRead(playButton) == LOW) {
+      happiness += 10;
+      if (happiness > 100) happiness = 100;
+
+      health -= 5;
+      if (health < 0) health = 0;
+      delay(300);
+    }
+
+    // Update pet state
+    updateEmotion();
+    updateRGB();
+    updateLCD();
+
+    // Buzzer when health is low
+    if (health < 30) {
+      tone(buzzerPin, 1000);
+    } else {
+      noTone(buzzerPin);
+    }
+  }
+}
