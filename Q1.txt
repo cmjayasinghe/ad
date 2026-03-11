@@ -1,0 +1,577 @@
+Servo Motor
+
+include <Servo.h> 
+ 
+Servo myservo; 
+ 
+void setup() { 
+  myservo.attach(9); 
+} 
+ 
+void loop() { 
+  myservo.write(90); 
+  delay(1000); 
+  myservo.write(180); 
+  delay(1000); 
+} 
+
+========================================================================================
+
+Keypad + I2C LED + Buzzer
+
+#include <LiquidCrystal_I2C.h> 
+#include <Keypad.h> 
+ 
+LiquidCrystal_I2C lcd(0x27,16,2);              == GND	 GND
+                                               == VCC    5V
+const byte cols = 4;                           == SDA	 A4
+const byte rows = 4;                           == SCL	 A5
+ 
+char keys[rows][cols] = { 
+  {'1','2','3','A'}, 
+  {'4','5','6','B'}, 
+  {'7','8','9','C'}, 
+  {'*','0','#','D'}, 
+}; 
+ 
+byte Colpins[cols] = {8,9,10,11};              == R1 → D1       C1 → D8
+byte Rowpins[rows] = {1,2,3,4};                == R2 → D2       C2 → D9
+ 					       == R3 → D3       C3 → D10
+String Password = "1234"; 		       == R4 → D4       C4 → D11
+String input = ""; 
+ 
+int buzzer_pin = 13;                          ==
+int red_led = 7;                              ==
+int green_led = 6;                            ==
+ 
+Keypad keypad = Keypad(makeKeymap(keys),Rowpins,Colpins,rows,cols); 
+ 
+void setup() { 
+  pinMode(buzzer_pin,OUTPUT); 
+  pinMode(red_led,OUTPUT); 
+  pinMode(green_led,OUTPUT); 
+  lcd.init(); 
+  lcd.backlight(); 
+  lcd.setCursor(0,0); 
+  lcd.print("Welcome !"); 
+  delay(2000); 
+  lcd.clear(); 
+  lcd.print("Enter:"); 
+  Serial.begin(9600); 
+} 
+ 
+void loop() { 
+   char key = keypad.getKey();  // Read key press 
+   
+  if (key) { 
+    Serial.print("Key Pressed: "); 
+ 
+    if (key == '#') { // '#' = Enter key 
+      if (input == Password) { 
+        Serial.println("Password Correct ✅"); 
+        digitalWrite(green_led, HIGH); 
+        lcd.clear(); 
+        lcd.print("Password OK!"); 
+        noTone(buzzer_pin);  
+      } else { 
+        Serial.println("Password Incorrect ❌"); 
+        lcd.clear(); 
+        lcd.print("Pass Worng!"); 
+        digitalWrite(green_led, LOW); 
+        tone(buzzer_pin, 1000); 
+        digitalWrite(red_led, HIGH); 
+      } 
+      input = ""; // reset input 
+    }  
+    else if (key == '*') { // '*' = Clear 
+      input = ""; 
+      lcd.clear(); 
+      Serial.println("Input Cleared"); 
+    }  
+    else { 
+      input += key; // add digit to input 
+      lcd.clear(); 
+      lcd.print(input); 
+    } 
+  } 
+} 
+
+===========================================================================================
+
+
+Ultrasonic 
+
+const int echo_pin = 6;                  ==
+const int trigger_pin = 7;		 ==
+const int green_led = 1; 		 ==
+const int red_led = 2;			 ==
+
+void setup() {
+  pinMode(trigger_pin, OUTPUT);
+  pinMode(echo_pin, INPUT);
+  pinMode(green_led, OUTPUT);
+  pinMode(red_led, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  digitalWrite(trigger_pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigger_pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigger_pin, LOW);
+
+  int duration = pulseIn(echo_pin, HIGH);
+  int distance = (duration * 0.0344) / 2;
+
+  Serial.print("Distance In CM : ");
+  Serial.println(distance);
+
+  if (distance > 200) {
+    digitalWrite(red_led, HIGH);
+    digitalWrite(green_led, LOW);
+  } else {
+    digitalWrite(green_led, HIGH);
+    digitalWrite(red_led, LOW);
+  }
+}
+
+
+===========================================================================================
+
+Joystick 
+
+void setup() { 
+  Serial.begin(9600); 
+ 
+  pinMode(4, OUTPUT); // UP LED              == GND  GND
+  pinMode(5, OUTPUT); // DOWN LED            == +5V  5V
+  pinMode(6, OUTPUT); // LEFT LED            == VRx  A0
+  pinMode(7, OUTPUT); // RIGHT LED           == VRy  A1
+}                                            == SW   Not used (leave unconnected)
+ 
+void loop() { 
+ 
+  int xval = analogRead(A0); 
+  int yval = analogRead(A1); 
+ 
+  Serial.print("X: "); 
+  Serial.print(xval); 
+  Serial.print(" Y: "); 
+  Serial.println(yval); 
+ 
+  // UP 
+  if (yval > 700) { 
+    digitalWrite(4, HIGH); 
+  } else { 
+    digitalWrite(4, LOW); 
+  } 
+ 
+  // DOWN 
+  if (yval < 300) { 
+    digitalWrite(5, HIGH); 
+  } else { 
+    digitalWrite(5, LOW); 
+  } 
+ 
+  // LEFT 
+  if (xval < 300) { 
+    digitalWrite(6, HIGH); 
+  } else { 
+    digitalWrite(6, LOW); 
+  } 
+ 
+  // RIGHT 
+  if (xval > 700) { 
+    digitalWrite(7, HIGH); 
+  } else { 
+    digitalWrite(7, LOW); 
+  } 
+ 
+  delay(200); 
+} 
+
+
+===========================================================================================
+
+PIR 
+
+#include <LiquidCrystal_I2C.h> 
+ 
+int red_led = 5; 
+int green_led = 6; 
+int buzzer_led = 7; 
+int pir_sensor_pin = 2; 
+ 
+LiquidCrystal_I2C lcd(0x27,16,2); 
+ 
+void setup() { 
+  pinMode(red_led, OUTPUT); 
+  pinMode(green_led, OUTPUT); 
+  lcd.init(); 
+  lcd.backlight(); 
+  lcd.setCursor(0,0); 
+  lcd.print("SYSTEM START"); 
+  delay(3000); 
+  lcd.clear(); 
+  Serial.begin(9600); 
+} 
+ 
+void loop() { 
+ 
+  int value_from_PIR = digitalRead(pir_sensor_pin); 
+   
+  if(value_from_PIR == HIGH){ 
+    lcd.clear(); 
+    lcd.setCursor(0,0); 
+    lcd.print("BE ALERT!"); 
+    digitalWrite(red_led,HIGH); 
+    digitalWrite(green_led,LOW); 
+    tone(buzzer_led,1000); 
+  }else if(value_from_PIR == LOW){ 
+    lcd.clear(); 
+    lcd.setCursor(0,0); 
+    lcd.print("No Alert!"); 
+    digitalWrite(red_led,LOW); 
+    digitalWrite(green_led,HIGH); 
+    noTone(buzzer_led); 
+  } 
+  
+}
+
+
+===========================================================================================
+
+Rain Sensor + Servo + Relay + LCD Wiring Guide
+
+#include <LiquidCrystal_I2C.h> 
+#include <Servo.h> 
+ 
+#define RAIN_SENSOR_PIN A0                  Rain Sensor Pin	Arduino Pin
+#define SERVO_PIN 9 			    AO			A0
+#define RELAY_PIN 6 			    VCC			5V
+#define RAIN_THRESHOLD 500 		    GND			GND
+                                            DO                  Not used
+LiquidCrystal_I2C lcd(0x27,16,2); 
+Servo myservo; 
+ 
+void setup() { 
+  Serial.begin(9600); 			    Relay Pin	Arduino Pin
+  lcd.init(); 					IN	D6
+  lcd.backlight(); 				VCC	5V
+ 						GND	GND
+  pinMode(RAIN_SENSOR_PIN, INPUT); 
+  pinMode(RELAY_PIN, OUTPUT); 
+  myservo.attach(SERVO_PIN); 
+ 
+  lcd.setCursor(0,0); 
+  lcd.print("Rain System Init"); 
+  delay(2000); 
+  lcd.clear(); 
+} 
+ 
+void loop() { 
+  int readValue = analogRead(RAIN_SENSOR_PIN); 
+  Serial.println(readValue); 
+ 
+  if (readValue > RAIN_THRESHOLD) { 
+    digitalWrite(RELAY_PIN, LOW); 
+    lcd.clear(); 
+    lcd.setCursor(0,0); 
+    lcd.print("Rain System:"); 
+    lcd.setCursor(0,1); 
+    lcd.print("Val:"); 
+    lcd.print(readValue); 
+    lcd.setCursor(9,1); 
+    lcd.print("No Rain"); 
+ 
+    myservo.write(0); 
+  }  
+  else { 
+    digitalWrite(RELAY_PIN, HIGH); 
+    lcd.clear(); 
+    lcd.setCursor(0,0); 
+    lcd.print("Rain System:"); 
+    lcd.setCursor(0,1); 
+    lcd.print("Val:"); 
+    lcd.print(readValue); 
+    lcd.setCursor(9,1); 
+    lcd.print("Rain!"); 
+ 
+    for(int angle=0; angle<=180; angle+=5) { 
+      myservo.write(angle); 
+      delay(20); 
+    } 
+    delay(500); 
+    for(int angle=180; angle>=0; angle-=5) { 
+      myservo.write(angle); 
+      delay(20); 
+    } 
+    delay(500); 
+  } 
+ 
+  delay(1000); 
+} 
+
+===========================================================================================
+
+Temperature
+
+#include <LiquidCrystal_I2C.h> 
+#include <DHT.h> 
+ 
+#define DHTPIN 4 
+#define DHTTYPE DHT22 
+ 
+int red_led = 5; 
+int green_led = 6; 
+int buzzer_led = 7; 
+ 
+DHT dht(DHTPIN, DHTTYPE); 
+LiquidCrystal_I2C lcd(0x27,16,2); 
+ 
+void setup() { 
+  dht.begin(); 
+  pinMode(red_led, OUTPUT); 
+  pinMode(green_led, OUTPUT); 
+  lcd.init(); 
+  lcd.backlight(); 
+  Serial.begin(9600); 
+} 
+ 
+void loop() { 
+  float temperature = dht.readTemperature(); 
+  lcd.setCursor(0,0); 
+  lcd.print("Temp: "); 
+  lcd.print(temperature); 
+ 
+  if(temperature>=50){ 
+    digitalWrite(red_led, HIGH); 
+    tone(buzzer_led,1000); 
+    digitalWrite(green_led, LOW); 
+    lcd.setCursor(0,1); 
+    lcd.print("HIGH TEMP!"); 
+  }else if(temperature<50){ 
+    digitalWrite(green_led, HIGH); 
+    noTone(buzzer_led); 
+    digitalWrite(red_led, LOW); 
+    lcd.setCursor(0,1); 
+    lcd.print("LOW TEMP!"); 
+  } 
+} 
+
+===========================================================================================
+
+SEVEN SEGMAN DISPLAY 
+
+#include <Arduino.h> 
+ 
+int a = 2; 
+int b = 3; 
+int c = 4; 
+int d = 5; 
+int e = 6; 
+int f = 7; 
+int g = 8; 
+int dg = 9; 
+ 
+int green = 10; 
+int yellow = 11; 
+int red = 12; 
+ 
+int buzzer = 13; 
+ 
+int t = 1000; 
+ 
+void zero(); 
+void one(); 
+void two(); 
+void three(); 
+void four(); 
+void five(); 
+void six(); 
+void seven(); 
+void eight(); 
+void nine(); 
+ 
+void setup() 
+{ 
+  int pins[] = {a, b, c, d, e, f, g}; 
+ 
+  for (int i = 0; i < 7; i++) 
+    pinMode(pins[i], OUTPUT); 
+} 
+ 
+void loop() 
+{ 
+  for(int x=0;x<=8;x++){ 
+    switch (x){ 
+      case 1: 
+        one(); 
+        delay(1000); 
+        break; 
+      case 2: 
+        two(); 
+        delay(1000); 
+        break; 
+      case 3: 
+        three(); 
+        delay(1000); 
+        break; 
+      case 4: 
+        four(); 
+        delay(1000); 
+        break; 
+      case 5: 
+        five(); 
+        delay(1000); 
+        break; 
+      case 6: 
+        six(); 
+        delay(1000); 
+        break; 
+      case 7: 
+        seven(); 
+        delay(1000); 
+        break;   
+      case 8: 
+        eight(); 
+        delay(1000); 
+        break; 
+      case 9: 
+        eight(); 
+        delay(1000); 
+        break; 
+      default: 
+        break; 
+    } 
+  } 
+   
+} 
+ 
+void zero() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, HIGH); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, LOW); 
+} 
+void one() 
+{ 
+  digitalWrite(a, LOW); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, LOW); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, LOW); 
+} 
+void two() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, LOW); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, HIGH); 
+  digitalWrite(f, LOW); 
+  digitalWrite(g, HIGH); 
+} 
+void three() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, LOW); 
+  digitalWrite(g, HIGH); 
+} 
+ 
+void four() 
+{ 
+  digitalWrite(a, LOW); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, LOW); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, HIGH); 
+} 
+void five() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, LOW); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, HIGH); 
+} 
+void six() 
+{ 
+ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, LOW); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, HIGH); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, HIGH); 
+} 
+void seven() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, LOW); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, LOW); 
+  digitalWrite(g, LOW); 
+} 
+void eight() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, HIGH); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, HIGH); 
+} 
+void nine() 
+{ 
+  digitalWrite(a, HIGH); 
+  digitalWrite(b, HIGH); 
+  digitalWrite(c, HIGH); 
+  digitalWrite(d, HIGH); 
+  digitalWrite(e, LOW); 
+  digitalWrite(f, HIGH); 
+  digitalWrite(g, HIGH); 
+} 
+
+7-Segment Display:
+  a  → D2 → 220Ω
+  b  → D3 → 220Ω
+  c  → D4 → 220Ω
+  d  → D5 → 220Ω
+  e  → D6 → 220Ω
+  f  → D7 → 220Ω
+  g  → D8 → 220Ω
+  dp → D9 → 220Ω (optional)
+  COM1 → GND
+  COM2 → GND
+
+Traffic LEDs:
+  Green  → D10 → 220Ω → LED → GND
+  Yellow → D11 → 220Ω → LED → GND
+  Red    → D12 → 220Ω → LED → GND
+
+Buzzer:
+  + → D13
+  - → GND
+=========================================================================================
+
+
+
